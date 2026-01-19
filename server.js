@@ -66,7 +66,7 @@ app.get("/allcards", async (req, res) => {
   try {
     connection = await mysql.createConnection(dbConfig);
     const [rows] = await connection.execute(
-      "SELECT * FROM module_cards.educationdb ORDER BY created_at DESC"
+      "SELECT * FROM module_cards ORDER BY created_at DESC"
     );
     return res.json(rows);
   } catch (err) {
