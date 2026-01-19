@@ -6,29 +6,33 @@ const cors = require("cors");
 dotenv.config();
 
 const app = express();
-
-// ✅ middleware
 app.use(express.json());
 
 /* =========================
-   CORS (Allowed Origins)
+   CORS
    ========================= */
+// ✅ for deployment, allow Render frontend / Vercel later
+// easiest: allow all origins during development
 const allowedOrigins = [
   "http://localhost:3000",
-  "http://localhost:5173", // if you use Vite
-  // "https://YOUR-frontend.vercel.app", // add later
-  // "https://YOUR-frontend.onrender.com" // add later
+  "http://localhost:5173",
+  // add your deployed frontend later:
+  // "https://xxxx.vercel.app",
+  // "https://xxxx.onrender.com",
 ];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (Postman/server-to-server)
+    origin: (origin, callback) => {
+      // allow requests with no origin (Postman, server-to-server)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+      // ✅ allow local dev origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // ✅ allow Render subdomains automatically (optional)
+      if (origin.endsWith(".onrender.com")) return callback(null, true);
+
       return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -37,21 +41,19 @@ app.use(
   })
 );
 
-// ✅ server port
+// ✅ IMPORTANT for Render: use process.env.PORT
 const PORT = Number(process.env.PORT || 3000);
 
-// ✅ MySQL config (must be host/user/password/database/port)
+// ✅ MySQL config
 const dbConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME, // education_db
+  database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT || 3306),
 };
 
-/* =========================
-   Health Check
-   ========================= */
+// Health check
 app.get("/", (req, res) => {
   res.json({ message: "API is running ✅" });
 });
@@ -63,17 +65,13 @@ app.get("/allcards", async (req, res) => {
   let connection;
   try {
     connection = await mysql.createConnection(dbConfig);
-
     const [rows] = await connection.execute(
-      "SELECT * FROM module_cards ORDER BY created_at DESC"
+      "SELECT * FROM module_cards.educationdb ORDER BY created_at DESC"
     );
-
     return res.json(rows);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      message: "Server error: cards cannot be fetched",
-    });
+    return res.status(500).json({ message: "Server error: cards cannot be fetched" });
   } finally {
     if (connection) await connection.end();
   }
@@ -84,11 +82,10 @@ app.get("/allcards", async (req, res) => {
    ========================= */
 app.get("/cards/:id", async (req, res) => {
   const { id } = req.params;
-
   let connection;
+
   try {
     connection = await mysql.createConnection(dbConfig);
-
     const [rows] = await connection.execute(
       "SELECT * FROM module_cards WHERE id = ?",
       [id]
@@ -196,8 +193,8 @@ app.put("/cards/:id", async (req, res) => {
    ========================= */
 app.delete("/cards/:id", async (req, res) => {
   const { id } = req.params;
-
   let connection;
+
   try {
     connection = await mysql.createConnection(dbConfig);
 
@@ -219,9 +216,6 @@ app.delete("/cards/:id", async (req, res) => {
   }
 });
 
-/* =========================
-   Start server
-   ========================= */
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
