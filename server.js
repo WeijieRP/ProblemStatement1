@@ -7,23 +7,51 @@ dotenv.config();
 
 const app = express();
 
-// ✅ middleware MUST be called
-app.use(cors());
+// ✅ middleware
 app.use(express.json());
 
-// ✅ server port (use a fallback)
+/* =========================
+   CORS (Allowed Origins)
+   ========================= */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173", // if you use Vite
+  // "https://YOUR-frontend.vercel.app", // add later
+  // "https://YOUR-frontend.onrender.com" // add later
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (Postman/server-to-server)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false,
+  })
+);
+
+// ✅ server port
 const PORT = Number(process.env.PORT || 3000);
 
-// ✅ MySQL config must use mysql expected keys: host/user/password/database/port
+// ✅ MySQL config (must be host/user/password/database/port)
 const dbConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME, // education_db
   port: Number(process.env.DB_PORT || 3306),
 };
 
-// ✅ quick health check route
+/* =========================
+   Health Check
+   ========================= */
 app.get("/", (req, res) => {
   res.json({ message: "API is running ✅" });
 });
@@ -192,7 +220,7 @@ app.delete("/cards/:id", async (req, res) => {
 });
 
 /* =========================
-   start server
+   Start server
    ========================= */
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
